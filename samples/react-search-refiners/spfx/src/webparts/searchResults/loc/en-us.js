@@ -40,6 +40,7 @@ define([], function() {
     "TilesLayoutOption": "Tiles",
     "CustomLayoutOption": "Custom",
     "TemplateUrlFieldLabel": "Use an external template URL",
+    "CustomActionOption": "Custom action",
     "TemplateUrlPlaceholder": "https://myfile.html",
     "ErrorTemplateExtension": "The template must be a valid .htm or .html file",
     "ErrorTemplateResolve": "Unable to resolve the specified template. Error details: '{0}'",

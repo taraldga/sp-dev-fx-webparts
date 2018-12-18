@@ -16,6 +16,8 @@ import {
   IPropertyPaneChoiceGroupOption,
   PropertyPaneChoiceGroup,
   PropertyPaneCheckbox,
+  PropertyPaneDropdown,
+  IPropertyPaneDropdownOption,
 } from '@microsoft/sp-webpart-base';
 import * as strings from 'SearchResultsWebPartStrings';
 import SearchResultsContainer from './components/SearchResultsContainer/SearchResultsContainer';
@@ -37,6 +39,8 @@ import { PropertyFieldCollectionData, CustomCollectionFieldType } from '@pnp/spf
 import { SPHttpClientResponse, SPHttpClient } from '@microsoft/sp-http';
 import { SortDirection, Sort } from '@pnp/sp';
 import { ISortFieldConfiguration, ISortFieldDirection } from '../../models/ISortFieldConfiguration';
+import IResultService from '../../services/ResultService/IResultService';
+import { ResultService } from '../../services/ResultService/ResultService';
 
 const LOG_SOURCE: string = '[SearchResultsWebPart_{0}]';
 
@@ -47,6 +51,7 @@ export default class SearchResultsWebPart extends BaseClientSideWebPart<ISearchR
     private _templateService: BaseTemplateService;
     private _useResultSource: boolean;
     private _propertyPage = null;
+    private _resultService: IResultService;
 
     /**
      * The template to display at render time
@@ -100,6 +105,9 @@ export default class SearchResultsWebPart extends BaseClientSideWebPart<ISearchR
 
         const isValueConnected = !!this.properties.queryKeywords.tryGetSource();
 
+        const customRenderer = this.properties.selectedLayout === ResultsLayoutOption.CustomAction;
+        console.log("Is rendering searchcontainer");
+
         const searchContainer: React.ReactElement<ISearchResultsContainerProps> = React.createElement(
             SearchResultsContainer,
             {
@@ -120,7 +128,10 @@ export default class SearchResultsWebPart extends BaseClientSideWebPart<ISearchR
                 templateService: this._templateService,
                 templateContent: this._templateContentToDisplay,
                 webPartTitle: this.properties.webPartTitle,
-                context: this.context
+                context: this.context,
+                customRenderer: customRenderer,
+                rendererId: this.properties.rendererId,
+                resultService: this._resultService,
             } as ISearchResultsContainerProps
         );
 
@@ -171,7 +182,9 @@ export default class SearchResultsWebPart extends BaseClientSideWebPart<ISearchR
 
         // Set the default search results layout
         this.properties.selectedLayout = this.properties.selectedLayout ? this.properties.selectedLayout : ResultsLayoutOption.List;
-
+        
+        this._resultService = new ResultService();
+        console.log(this.properties.selectedLayout);
         return super.onInit();
     }
 
@@ -299,7 +312,9 @@ export default class SearchResultsWebPart extends BaseClientSideWebPart<ISearchR
 
         if (propertyPath === 'selectedLayout') {
             // Refresh setting the right template for the property pane
-            await this._getTemplateContent();
+            if(this.properties.selectedLayout !== ResultsLayoutOption.CustomAction) {
+                await this._getTemplateContent();
+            }
         }
 
         // Detect if the layout has been changed to custom...
@@ -403,7 +418,9 @@ export default class SearchResultsWebPart extends BaseClientSideWebPart<ISearchR
         this.onPropertyPaneFieldChanged(propertyPath);
 
         // Refresh setting the right template for the property pane
-        await this._getTemplateContent();
+        if(this.properties.selectedLayout !== ResultsLayoutOption.CustomAction) {
+            await this._getTemplateContent();
+        }
 
         // Refreshes the web part manually because custom fields don't update since sp-webpart-base@1.1.1
         // https://github.com/SharePoint/sp-dev-docs/issues/594
@@ -718,10 +735,17 @@ export default class SearchResultsWebPart extends BaseClientSideWebPart<ISearchR
                 },
                 text: strings.CustomLayoutOption,
                 key: ResultsLayoutOption.Custom,
+            },
+            {
+                iconProps: {
+                    officeFabricIconFontName: 'CloudDownload'
+                },
+                text: strings.CustomActionOption,
+                key: ResultsLayoutOption.CustomAction
             }
         ] as IPropertyPaneChoiceGroupOption[];
 
-        const canEditTemplate = this.properties.externalTemplateUrl && this.properties.selectedLayout === ResultsLayoutOption.Custom ? false : true;
+        const canEditTemplate = (this.properties.externalTemplateUrl && this.properties.selectedLayout === ResultsLayoutOption.Custom) || this.properties.selectedLayout === ResultsLayoutOption.CustomAction ? false : true;
 
         // Sets up styling fields
         let stylingFields: IPropertyPaneField<any>[] = [
@@ -766,8 +790,28 @@ export default class SearchResultsWebPart extends BaseClientSideWebPart<ISearchR
                 deferredValidationTime: 500,
                 onGetErrorMessage: this._onTemplateUrlChange.bind(this)
             }));
+        } else if(this.properties.selectedLayout === ResultsLayoutOption.CustomAction) {
+            stylingFields.push(PropertyPaneDropdown('rendererId', {
+                label: 'Pick a custom action to use as renderer',
+                options: this.getRenderers()
+            }));
         }
-
         return stylingFields;
+    }
+
+    protected getRenderers(): IPropertyPaneDropdownOption[] {
+        if (this.properties.selectedLayout === ResultsLayoutOption.CustomAction) {
+            const registeredRenderers = this._resultService.getRegisteredRenderers();
+            if(registeredRenderers && registeredRenderers.length > 0) {
+                return registeredRenderers.map(ca => {
+                    return {
+                        key: ca.id,
+                        text: ca.name 
+                    };
+                });
+            } else {
+                return [];
+            }
+        }
     }
 }

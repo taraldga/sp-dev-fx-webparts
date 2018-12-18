@@ -23,4 +23,5 @@ export interface ISearchResultsWebPartProps {
     externalTemplateUrl: string;
     inlineTemplateText: string;
     webPartTitle: string;
+    rendererId: string;
 }
