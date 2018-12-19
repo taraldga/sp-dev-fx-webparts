@@ -155,7 +155,7 @@ export default class SearchResultsContainer extends React.Component<ISearchConta
                         <div className={styles.searchWp__buttonBar}>{sortPanel}{renderFilterPanel}</div>
                         {renderOverlay}
                         {searchResultsdisplay}
-                        <div id={`pnp-search-render-node-${this.state.mountingNodeGuid}`} />
+                        <div id={`pnp-search-render-node-${this.state.mountingNodeGuid}`} className="template_root" />
                         {this.props.showPaging ?
                             <Paging
                                 totalItems={items.TotalRows}
