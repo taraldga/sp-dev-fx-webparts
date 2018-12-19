@@ -184,7 +184,6 @@ export default class SearchResultsWebPart extends BaseClientSideWebPart<ISearchR
         this.properties.selectedLayout = this.properties.selectedLayout ? this.properties.selectedLayout : ResultsLayoutOption.List;
         
         this._resultService = new ResultService();
-        console.log(this.properties.selectedLayout);
         return super.onInit();
     }
 
